@@ -203,35 +203,22 @@ body.quiet #hud{opacity:0} body.quiet #hud:hover{opacity:1}
 .visual .split.even{grid-template-columns:1fr 1fr}
 .visual .split img{max-height:100%}
 
-/* touch screens: ‹ › page buttons (hidden with a mouse), key hints hidden */
+/* touch screens: buttons in the side gutters — left: notes over ‹ ; right: overview, full over › */
 #tnav{display:none}
-@media (pointer:coarse){
-  #tnav{display:flex;position:fixed;left:0;right:0;bottom:10px;justify-content:space-between;padding:0 10px;pointer-events:none;z-index:50}
-  #tnav button{pointer-events:auto;width:48px;height:48px;border-radius:50%;border:0;background:rgba(28,30,43,.55);
-    color:#fff;font-size:30px;line-height:44px;padding:0;-webkit-tap-highlight-color:transparent}
-  #hud{display:none}
-}
-html.touch #tnav{display:flex;position:fixed;left:0;right:0;bottom:10px;justify-content:space-between;padding:0 10px;pointer-events:none;z-index:50}
-html.touch #tnav button{pointer-events:auto;width:48px;height:48px;border-radius:50%;border:0;background:rgba(28,30,43,.55);
-  color:#fff;font-size:30px;line-height:44px;padding:0;-webkit-tap-highlight-color:transparent}
+html.touch #tnav{display:block}
+#tnav .side{position:fixed;top:10px;bottom:10px;width:56px;display:flex;flex-direction:column;align-items:center;gap:8px;z-index:50}
+#tnav .side.l{left:6px} #tnav .side.r{right:6px}
+#tnav .side button{width:48px;height:48px;border-radius:50%;border:0;padding:0;color:#fff;font-size:30px;line-height:44px;
+  background:rgba(28,30,43,.88);box-shadow:0 0 0 1px rgba(255,255,255,.25);-webkit-tap-highlight-color:transparent}
+#tnav .side button#tprev,#tnav .side button#tnext{margin-top:auto}
+#tnav #tnotes,#tnav #tov,#tnav #tfull{width:56px;height:30px;border-radius:15px;font-size:11px;line-height:30px;letter-spacing:.02em}
 html.touch #hud{display:none}
-html.touch #tnav{align-items:center}
-html.touch #tnav .mid{display:flex;gap:8px;pointer-events:auto}
-html.touch #tnav .mid button{width:auto;height:34px;border-radius:17px;padding:0 14px;font-size:14px;line-height:34px;background:rgba(28,30,43,.55)}
-#tnav .mid{display:none}
-@media (pointer:coarse){#tnav{align-items:center} #tnav .mid{display:flex;gap:8px;pointer-events:auto}
-  #tnav .mid button{width:auto;height:34px;border-radius:17px;padding:0 14px;font-size:14px;line-height:34px}}
-html.touch #notes{padding-bottom:70px}
-@media (pointer:coarse){#notes{padding-bottom:70px}}
-html.touch #tnav button,html.touch #tnav .mid button{background:rgba(28,30,43,.88);box-shadow:0 0 0 1px rgba(255,255,255,.25)}
-@media (pointer:coarse){#tnav button,#tnav .mid button{background:rgba(28,30,43,.88);box-shadow:0 0 0 1px rgba(255,255,255,.25)}}
 /* iPhone Safari inflates text in landscape; keep sizes as written */
 html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 /* phones: compact speaker notes */
-html.touch #notes{padding:12px 18px 64px}
+html.touch #notes{padding:12px 76px 16px}
 html.touch #notes h4{font-size:10px;margin-bottom:6px}
 html.touch #notes .nc{font-size:14px;line-height:1.55}
-@media (pointer:coarse){#notes{padding:12px 18px 64px} #notes h4{font-size:10px;margin-bottom:6px} #notes .nc{font-size:14px;line-height:1.55}}
 
 </style>
 </head>
@@ -472,7 +459,7 @@ And I wish I could work with many more.</p></div>
   <span><kbd>F</kbd> full</span>
 </div>
 <div id="goto"></div>
-<div id="tnav"><button id="tprev" aria-label="previous">‹</button><span class="mid"><button id="tnotes">notes</button><button id="tov">overview</button><button id="tfull">full</button></span><button id="tnext" aria-label="next">›</button></div>
+<div id="tnav"><div class="side l"><button id="tnotes">notes</button><button id="tprev" aria-label="previous">‹</button></div><div class="side r"><button id="tov">overview</button><button id="tfull">full</button><button id="tnext" aria-label="next">›</button></div></div>
 <div id="notes"><h4>SPEAKER NOTES</h4><div class="nc" id="nc"></div></div>
 <div id="ov"></div>
 <div id="blank"></div>
@@ -480,14 +467,17 @@ And I wish I could work with many more.</p></div>
 // Keys: ←/→ (also PageUp/PageDown, the clicker) page · N notes · O overview ·
 // F fullscreen · Home/End · digits + Enter jump to slide.
 // Mouse clicks never turn the page; on touch screens the ‹ › buttons and a swipe do.
+if (navigator.maxTouchPoints > 0 && !matchMedia('(pointer:fine)').matches) document.documentElement.classList.add('touch');
 const stage = document.getElementById('stage');
 const slides = [...document.querySelectorAll('#stage > .slide')];
 const ov = document.getElementById('ov'), gotoEl = document.getElementById('goto');
 let cur = 0, notesOn = false, typed = '';
 
 function fit() {
+  const touch = document.documentElement.classList.contains('touch') || matchMedia('(pointer:coarse)').matches;
   const W = innerWidth, H = innerHeight * (notesOn ? 0.56 : 1), pad = Math.min(W, H) < 700 ? 12 : 80;   // phones: a thin margin
-  stage.style.transform = `scale(${Math.min((W - pad) / 1600, (H - pad) / 900)})`;
+  const padW = touch ? Math.max(pad, 136) : pad;     // touch: keep the side gutters clear for the buttons
+  stage.style.transform = `scale(${Math.min((W - padW) / 1600, (H - pad) / 900)})`;
   document.getElementById('viewport').style.bottom = notesOn ? '44vh' : '0';
 }
 // in-slide steps: an <iframe data-steps="N"> takes →/← itself until its steps run out; each step
@@ -534,7 +524,6 @@ function buildOv() {
 function next() { const f = stepper(); if (f && step < +f.dataset.steps - 1) { step++; sendStep(); } else show(cur + 1); }
 function prev() { if (stepper() && step > 0) { step--; sendStep(); } else show(cur - 1, true); }
 // touch screens (phones, tablets): ‹ › buttons and a horizontal swipe. Mouse clicks still never turn the page.
-if (navigator.maxTouchPoints > 0 && !matchMedia('(pointer:fine)').matches) document.documentElement.classList.add('touch');
 document.getElementById('tnext').onclick = next;
 document.getElementById('tprev').onclick = prev;
 function toggleNotes() { notesOn = !notesOn; document.getElementById('notes').classList.toggle('on', notesOn); fit(); }
